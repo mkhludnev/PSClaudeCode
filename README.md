@@ -75,7 +75,7 @@ The examples above highlight how the agent can handle complex, multi-step tasks 
 
 ## Prerequisites
 - PowerShell 5.1 or higher
-- Anthropic API key (set as environment variable `$env:ANTHROPIC_API_KEY`)
+- Anthropic API key (`$env:ANTHROPIC_API_KEY`) or auth token (`$env:ANTHROPIC_AUTH_TOKEN`)
 
 ## Installation
 1. Clone the repository:
@@ -88,6 +88,8 @@ The examples above highlight how the agent can handle complex, multi-step tasks 
    ```powershell
    $env:ANTHROPIC_API_KEY = "your-api-key-here"
    ```
+
+   For an Anthropic-compatible endpoint, you can optionally set `$env:ANTHROPIC_BASE_URL` (defaults to `https://api.anthropic.com`). To use a different model by default, set `$env:MODEL` (defaults to `claude-sonnet-4-5-20250929`). An explicitly supplied `-Model` takes precedence over `$env:MODEL`. When using `ANTHROPIC_AUTH_TOKEN`, the module sends it as a bearer token; otherwise, it uses `ANTHROPIC_API_KEY` in the `x-api-key` header.
 
 3. Import the module:
    ```powershell

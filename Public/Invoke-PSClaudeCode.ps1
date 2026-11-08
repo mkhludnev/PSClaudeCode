@@ -14,7 +14,7 @@
     Accepts pipeline input that can be used as part of the task description.
 
 .PARAMETER Model
-    The Claude model to use. Defaults to "claude-sonnet-4-5-20250929".
+    The Claude model to use. Defaults to the MODEL environment variable, or "claude-sonnet-4-5-20250929".
 
 .PARAMETER dangerouslySkipPermissions
     Switch to skip permission prompts for potentially dangerous operations. Use with caution.
@@ -35,7 +35,8 @@
     This example runs a command without permission prompts.
 
 .NOTES
-    Requires ANTHROPIC_API_KEY environment variable to be set.
+    Requires ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN environment variable to be set.
+    ANTHROPIC_BASE_URL can override the default API base URL.
     The function includes safety checks for file operations and command execution.
 #>
 function Invoke-PSClaudeCode {
@@ -69,8 +70,31 @@ function Invoke-PSClaudeCode {
 
         # proceed with the rest of the function using the possibly-updated $Task
 
+        if (-not $PSBoundParameters.ContainsKey("Model") -and -not [string]::IsNullOrWhiteSpace($env:MODEL)) {
+            $Model = $env:MODEL
+        }
+
+        $authToken = $env:ANTHROPIC_AUTH_TOKEN
         $apiKey = $env:ANTHROPIC_API_KEY
-        if (-not $apiKey) { Write-Host "Set ANTHROPIC_API_KEY"; exit }
+        if (-not $authToken -and -not $apiKey) { Write-Host "Set ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN"; exit }
+
+        $baseUrl = if ([string]::IsNullOrWhiteSpace($env:ANTHROPIC_BASE_URL)) {
+            "https://api.anthropic.com"
+        }
+        else {
+            $env:ANTHROPIC_BASE_URL.TrimEnd("/")
+        }
+        $apiUrl = "$baseUrl/v1/messages"
+        $headers = @{
+            "anthropic-version" = "2023-06-01"
+            "Content-Type"      = "application/json"
+        }
+        if ($authToken) {
+            $headers["Authorization"] = [string]::Concat("Bearer ", $authToken)
+        }
+        else {
+            $headers["x-api-key"] = $apiKey
+        }
 
         Write-Host "[$((Get-Date).ToString('HH:mm:ss'))] 🤖 Processing request..."
 
@@ -180,11 +204,7 @@ function Invoke-PSClaudeCode {
                     tools      = $tools
                 } | ConvertTo-Json -Depth 10
             
-                $response = Invoke-RestMethod -Uri "https://api.anthropic.com/v1/messages" -Method Post -Headers @{
-                    "x-api-key"         = $apiKey
-                    "anthropic-version" = "2023-06-01"
-                    "Content-Type"      = "application/json"
-                } -Body $body
+                $response = Invoke-RestMethod -Uri $apiUrl -Method Post -Headers $headers -Body $body
                 
                 Write-Host "[$((Get-Date).ToString('HH:mm:ss'))]   🤖 Response received, analyzing..."
             
@@ -264,11 +284,7 @@ function Invoke-PSClaudeCode {
                 tools      = $tools
             } | ConvertTo-Json -Depth 10
 
-            $response = Invoke-RestMethod -Uri "https://api.anthropic.com/v1/messages" -Method Post -Headers @{
-                "x-api-key"         = $apiKey
-                "anthropic-version" = "2023-06-01"
-                "Content-Type"      = "application/json"
-            } -Body $body
+            $response = Invoke-RestMethod -Uri $apiUrl -Method Post -Headers $headers -Body $body
             
             Write-Host "[$((Get-Date).ToString('HH:mm:ss'))] 🤖 Response received, analyzing..."
 
