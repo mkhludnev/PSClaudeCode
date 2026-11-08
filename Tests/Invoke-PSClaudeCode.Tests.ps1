@@ -60,6 +60,11 @@ Describe 'Invoke-PSClaudeCode' {
             # but we can verify the function requires the environment variable
             $env:ANTHROPIC_API_KEY | Should -BeNullOrEmpty
         }
+
+        It 'Should support ANTHROPIC_AUTH_TOKEN as an alternative credential' {
+            $script:FunctionContent | Should -Match 'ANTHROPIC_AUTH_TOKEN'
+            $script:FunctionContent | Should -Match 'Authorization.*Bearer'
+        }
     }
 
     Context 'Tool Definitions' {
@@ -147,8 +152,14 @@ Describe 'Invoke-PSClaudeCode' {
             $script:FunctionContent | Should -Match 'Model\s*=\s*"claude-sonnet-4-5-20250929"'
         }
 
-        It 'Should call Anthropic API endpoint' {
-            $script:FunctionContent | Should -Match 'https://api\.anthropic\.com/v1/messages'
+        It 'Should use MODEL from the environment when no model is provided' {
+            $script:FunctionContent | Should -Match '\$Model\s*=\s*\$env:MODEL'
+        }
+
+        It 'Should allow overriding the API base URL' {
+            $script:FunctionContent | Should -Match '\$env:ANTHROPIC_BASE_URL'
+            $script:FunctionContent | Should -Match '\$apiUrl\s*=\s*"\$baseUrl/v1/messages"'
+            $script:FunctionContent | Should -Match 'Invoke-RestMethod\s+-Uri\s+\$apiUrl'
         }
 
         It 'Should set correct API headers' {
